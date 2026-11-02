@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(git *reset --hard*)",
+      "Bash(git *push* --force*)",
+      "Bash(git *push* -f*)",
+      "Bash(git *clean -*f*)",
+      "Bash(git *checkout *-- *)",
+      "Bash(git *restore *-- *)",
+      "Bash(git *commit *--amend*)",
+      "PowerShell(git *reset --hard*)",
+      "PowerShell(git *push* --force*)",
+      "PowerShell(git *push* -f*)",
+      "PowerShell(git *clean -*f*)",
+      "PowerShell(git *checkout *-- *)",
+      "PowerShell(git *restore *-- *)",
+      "PowerShell(git *commit *--amend*)",
+      "Bash(rm -r*)",
+      "Bash(rm -R*)",
+      "Bash(rm -fr*)",
+      "Bash(rm -fR*)",
+      "Bash(*Remove-Item *-Recurse*)",
+      "Bash(*Remove-Item *-Force*)",
+      "PowerShell(Remove-Item *-Recurse*)",
+      "PowerShell(Remove-Item *-Force*)",
+      "Read(//c/Users/YOUR_NAME/.secrets/**)",
+      "Edit(//c/Users/YOUR_NAME/.claude/hooks/**)",
+      "Edit(//c/Users/YOUR_NAME/.claude/mods/**)",
+      "Edit(//c/Users/YOUR_NAME/.claude/rules/**)",
+      "Edit(//c/Users/YOUR_NAME/.claude/CLAUDE.md)"
+    ],
+    "disableBypassPermissionsMode": "disable"
+  }
+}
