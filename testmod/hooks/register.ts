@@ -19,7 +19,7 @@ const allowed = (tool: string, args: unknown) =>
 export const register: Register = on => {
   // Marker that the mod loaded: one line under the input box
   on('session.start', ($, e, next) => {
-    $.ui.status(`${PASS} mod 読み込み済み`)
+    $.ui.status(`${PASS} mod loaded`)
     return next(e)
   })
 
@@ -27,7 +27,7 @@ export const register: Register = on => {
   on('classic.PreToolUse', ($, e, next) => {
     const command = allowed(e.tool, e)
     if (!command) return next(e)
-    $.ui.status(`${PASS} PreToolUse で allow: ${command}`)
+    $.ui.status(`${PASS} PreToolUse allow: ${command}`)
     return { allow: true }
   })
 
@@ -35,7 +35,7 @@ export const register: Register = on => {
   on('tool.check', ($, e, next) => {
     const command = allowed(e.tool, e.input)
     if (!command) return next(e)
-    $.ui.status(`${PASS} tool.check で allow: ${command}`)
+    $.ui.status(`${PASS} tool.check allow: ${command}`)
     return { decision: 'allow' }
   })
 }

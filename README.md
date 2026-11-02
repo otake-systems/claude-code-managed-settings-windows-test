@@ -1,99 +1,101 @@
 # Claude Code managed settings: mods vs deny rules, a before/after test on Windows
 
-A hands-on record from one Windows machine (2026-11-02, Claude Code 2.1.316). Without a `managed-settings.json`, a test mod's `allow` got past a `deny` rule and a blocking `PreToolUse` hook. With the file in place, the same mod still returned `allow`, and both held. One surprise: sessions started before `C:\Program Files\ClaudeCode` existed did not pick the file up until restarted. The rest of this page is in Japanese.
+An unofficial, hands-on record from one Windows machine, run by one person at their own token cost. Not affiliated with Anthropic. Official documentation is linked under [See also](#see-also).
 
-個人が自分の機械と自分のトークンで確かめた記録です。Anthropic とは関係ありません。公式の説明は末尾の「関連」にあります。
+## Summary
 
-## 結論
+- Without a `managed-settings.json`, a test mod's `allow` got past a `deny` rule and a blocking `PreToolUse` hook.
+- With the file in place, the same mod still returned `allow`, and both the rule and the hook held.
+- **Sessions started before the settings folder existed did not pick the file up.** They did after a restart.
 
-- `managed-settings.json` を置く前は、試験用の mod の `allow` が deny の行と PreToolUse hook の止めを越えた。
-- 置いた後は、同じ mod が `allow` を返しても、どちらも止まった。
-- **起動時に置き場のフォルダが無かった窓には届かなかった。** 起動し直すと効いた。
+## Environment
 
-## 環境
+- Windows 11 Pro (10.0.26300)
+- Claude Code CLI 2.1.316, Claude Desktop 4.4212.0 (bundled Claude Code 2.1.309)
+- An individual Ultra account (Team and Enterprise were not tested)
+- File location: `C:\Program Files\ClaudeCode\managed-settings.json`
+- Test date: 2026-11-02
 
-- Windows 11 Pro（10.0.26300）
-- Claude Code CLI 2.1.316、Claude Desktop 4.4212.0（内蔵の Claude Code は 2.1.309）
-- 個人の Ultra アカウント（Team・Enterprise は試していない）
-- 置いた場所は `C:\Program Files\ClaudeCode\managed-settings.json`
+## Before and after
 
-## 置く前と置いた後
+The mod returns `allow` only for the 4 commands in `testmod/`.
 
-| 試した事（どれも mod が許可を返す命令は `testmod/` の 4 つだけ） | 置く前 | 置いた後 |
+| Test | Before | After |
 |---|---|---|
-| `--settings` の deny の行に当たる `echo S5TEST-F18` | 通った | `has been denied` |
-| 自前の PreToolUse hook が止める `printenv S5TEST-F18` | 通った | hook の字で止まった |
-| deny の行が無い `mkdir control-S5TEST-F18` | 確認の画面なしで通った | 確認の画面なしで通った |
-| mod が許可しない `mkdir plain-dir`（manual mode） | 確認の画面 | 確認の画面 |
-| 管理者の deny の行 `Bash(rm -r*)` に当たる `rm -r empty-S5TEST-F18` | 打っていない | `has been denied` |
+| `echo S5TEST-F18`, matched by a `deny` rule passed with `--settings` | Ran | `has been denied` |
+| `printenv S5TEST-F18`, blocked by the tester's own `PreToolUse` hook | Ran | Blocked with the hook's message |
+| `mkdir control-S5TEST-F18`, no `deny` rule matches | Ran with no prompt | Ran with no prompt |
+| `mkdir plain-dir`, the mod does not allow it (manual mode) | Prompted | Prompted |
+| `rm -r empty-S5TEST-F18`, matched by the managed rule `Bash(rm -r*)` | Not run | `has been denied` |
 
-置いた後の画面には次の字が出た。
+After the file was in place, these messages appeared:
 
 ```text
 cc-plugin-sec-default: s5test-f18 tried to lift a deny rule in your settings from a Bash call (Bash(rm -r*)); the deny rule holds over the plugins you install (allowModsToOverrideDenyRules)
 cc-plugin-sec-default: s5test-f18 tried to lift a refusal from a Bash call; the refusal holds over the plugins you install (allowModsToOverrideDenyRules)
 ```
 
-## 管理者の deny の行で止まった形（23 形）
+## Commands stopped by the managed deny rules (23 forms)
 
-hook を読まない窓（`--setting-sources project`）・manual mode で試した。すべて確認の画面なしで `has been denied` だった。
+Tested in a session that loads no hooks (`--setting-sources project`), in manual mode. All 23 returned `has been denied` with no prompt.
 
-| 道具 | 形 |
+| Tool | Commands |
 |---|---|
-| Bash（8 形） | `git reset --hard`・`git -C . reset --hard`・`git push --force origin main`・`git push -f origin main`・`git clean -fd`・`git checkout -- a.txt`・`git restore -- a.txt`・`git commit --amend -m x` |
-| PowerShell（7 形） | 上から `git -C . reset --hard` を除いた 7 つ |
-| Bash（6 形） | `rm -r d1`・`rm -R d1`・`rm -fr d1`・`rm -fR d1`・`pwsh -Command "Remove-Item -Recurse d1"`・`pwsh -Command "Remove-Item -Force a.txt"` |
-| PowerShell（2 形） | `Remove-Item -Recurse d1`・`Remove-Item -Force a.txt` |
+| Bash (8) | `git reset --hard`, `git -C . reset --hard`, `git push --force origin main`, `git push -f origin main`, `git clean -fd`, `git checkout -- a.txt`, `git restore -- a.txt`, `git commit --amend -m x` |
+| PowerShell (7) | The same list without `git -C . reset --hard` |
+| Bash (6) | `rm -r d1`, `rm -R d1`, `rm -fr d1`, `rm -fR d1`, `pwsh -Command "Remove-Item -Recurse d1"`, `pwsh -Command "Remove-Item -Force a.txt"` |
+| PowerShell (2) | `Remove-Item -Recurse d1`, `Remove-Item -Force a.txt` |
 
-## Edit の deny は書込の形のどこまで効くか
+## How far an Edit deny rule reaches
 
-`--settings` で試験用の deny（`Read(…/trial/.secrets/**)`・`Edit(…/trial/hooks/**)`）を渡して試した。
+Tested with trial rules passed through `--settings`: `Read(…/trial/.secrets/**)` and `Edit(…/trial/hooks/**)`.
 
-| 形 | 結果 |
+| Form | Result |
 |---|---|
-| Read・Edit・Write の道具 | `File is in a directory that is denied by your permission settings.` |
-| 大文字に変えたパスへの Edit（`trial\HOOKS\CLAUDE-MARK.md`） | 同じ字で止まった |
-| Bash の `echo x > …`・`echo x \| tee …`・`cp a.txt …` | `has been denied` |
-| PowerShell の `Copy-Item`・`Set-Content` | `was blocked ... allowed working directories`（deny の行から来る字かは未確認） |
-| 人が打つ `! cp a.txt …` | 通った |
+| The Read, Edit and Write tools | `File is in a directory that is denied by your permission settings.` |
+| Edit on an upper-case path (`trial\HOOKS\CLAUDE-MARK.md`) | Same message |
+| Bash `echo x > …`, `echo x \| tee …`, `cp a.txt …` | `has been denied` |
+| PowerShell `Copy-Item`, `Set-Content` | `was blocked ... allowed working directories` (whether the deny rule caused this was not confirmed) |
+| `! cp a.txt …` typed by the person | Ran |
 
-## 想定と違った事
+## What did not go as expected
 
-1. **動いている窓には届かない場合がある。** 20:42 に起動した窓は、21:37 に置いた後も `/status` に `Enterprise managed settings (file)` が出ず、deny の行に当たる読むだけの `git log -1 --grep=push -f` が実行された。起動し直すと両方とも直った。公式の頁にも条件がある＝`loads a settings file you create mid-session if its folder existed when the session started`。
-2. **bypass の起動は、エラーにならない。** `disableBypassPermissionsMode: "disable"` の下で `claude --dangerously-skip-permissions` と `claude --permission-mode bypassPermissions` を打つと、窓は開き、bypass ではない既定のモードになった。`Shift+Tab` で一周しても `bypass permissions` は出なかった。
-3. **設定の無い窓の既定は auto mode だった。** `mkdir plain-dir` が確認の画面なしで通った。確認の画面の有無を見る試しは、manual mode にしてから打つ必要があった。
-4. **Claude が書き方を変えた再試行を断る事がある。** `git reset --hard` が止まった直後の `git -C . reset --hard` は、道具を呼ばずに断った。試験だと伝えると道具を呼び、deny の行で止まった。
-5. **Desktop の表示は字が違う。** `/status` は `管理設定：有効` と出た。同じ `git log` は `has been denied` で止まった。
-6. **人の手は止まらない。** `! git reset --hard` は使い捨ての repo で通った。
+1. **A running session may not receive the file.** A session started at 20:42 was still unaffected after the file was placed at 21:37: `/status` did not list `Enterprise managed settings (file)`, and a read-only `git log -1 --grep=push -f` that matches a deny rule ran. Both changed after a restart. The official page states the condition: `loads a settings file you create mid-session if its folder existed when the session started`.
+2. **Starting in bypass mode does not raise an error.** Under `disableBypassPermissionsMode: "disable"`, both `claude --dangerously-skip-permissions` and `claude --permission-mode bypassPermissions` opened a session in the default mode instead of bypass. Cycling with `Shift+Tab` never showed `bypass permissions`.
+3. **The default mode in a session with no settings was auto mode.** `mkdir plain-dir` ran with no prompt. Tests that look for a prompt need manual mode first.
+4. **Claude may refuse to retry in another form.** Right after `git reset --hard` was denied, Claude declined to call the tool for `git -C . reset --hard`. Once told this was a test, it made the call, and the deny rule stopped it.
+5. **The Desktop app words it differently.** Its `/status` card shows `管理設定：有効` in the Japanese UI ("Managed settings: enabled"). The same `git log` returned `has been denied` there.
+6. **The person's own commands are not stopped.** `! git reset --hard` ran in a disposable repository.
 
-## 戻す時
+## Rolling back
 
-名前を変えるだけで読まれなくなった（管理者の PowerShell）。戻した後の新しい窓では `/status` の字が消え、名前を戻すと字が出た。
+Renaming the file was enough (in an administrator PowerShell). New sessions then stopped listing it in `/status`, and it was listed again after the name was restored.
 
 ```powershell
 Rename-Item -LiteralPath 'C:\Program Files\ClaudeCode\managed-settings.json' -NewName ("managed-settings.json.off-" + (Get-Date -Format yyyyMMdd-HHmmss))
 ```
 
-## 限界
+## Limits
 
-- 1 台で 1 回だけ。版が変われば結果も変わる見込み。
-- 止まると言えるのは試した形だけ。deny の行は字の形で当たるので、試していない書き方まで止まるとは言えない。
-- 使い捨てのフォルダで試した。実物の repo には当てていない。
+- One machine, one run. Results may change with other versions.
+- Only the forms listed here were tested. Deny rules match on the shape of the text, so other spellings may not be stopped.
+- Everything ran in disposable folders, never against a real repository.
+- Not tested: whether a rollback reaches a session that started while the folder existed.
 
-## 試し方
+## How to reproduce
 
-1. `testmod/` を置き、Claude Code の外の PowerShell から窓を起こす。deny の行の試しは `$env:CLAUDE_CODE_PLUGIN_DIRS='<testmod のパス>'; claude --setting-sources project --settings '<deny を書いた JSON>'`、hook の試しは `claude --plugin-dir '<testmod のパス>'`。
-2. `Shift+Tab` で manual mode にする。
-3. 上の表の命令を Claude に頼む。`/status` の `Setting sources` と、入力欄の下の 1 行（mod の allow の印）を見る。
-4. `managed-settings.example.json` の `YOUR_NAME` を直して置き、窓を起こし直して同じ命令を頼む。
+1. Put `testmod/` somewhere and start sessions from a PowerShell outside Claude Code. For the deny rule test: `$env:CLAUDE_CODE_PLUGIN_DIRS='<path to testmod>'; claude --setting-sources project --settings '<JSON with a deny rule>'`. For the hook test: `claude --plugin-dir '<path to testmod>'`.
+2. Switch to manual mode with `Shift+Tab`.
+3. Ask Claude to run the commands above. Check `Setting sources` in `/status`, and the line under the input box (the mod's `allow` marker).
+4. Replace `YOUR_NAME` in `managed-settings.example.json`, place it, start new sessions, and ask for the same commands.
 
-## ファイル
+## Files
 
-- `managed-settings.example.json`＝試した設定から、機械に固有の第 2 の設定フォルダの 4 行を除いた 27 行。パスは置き換えた（この形のままでは試していない）。
-- `testmod/`＝試験用の mod。決めた 4 命令と同じ字の呼び出しにだけ allow を返す。本番に置かない。
+- `managed-settings.example.json`: the tested settings minus 4 lines specific to this machine, leaving 27 rules, with paths replaced. This exact form was not tested.
+- `testmod/`: the test mod. It returns `allow` only for calls that exactly match its 4 commands. Do not install it for real use. Its status messages were translated into English for publication; its logic is unchanged.
 
-## 関連
+## See also
 
-- 公式 [Configure permissions](https://code.claude.com/docs/en/permissions)（Precedence among rules, hooks, and mods）
-- 公式 [Settings files and precedence](https://code.claude.com/docs/en/settings)（When edits take effect）
-- Anthropic の [`mods/sec-default`](https://github.com/anthropics/claude-code/tree/main/mods/sec-default)（上の字を出す組み込みの mod）
+- [Configure permissions](https://code.claude.com/docs/en/permissions) (Precedence among rules, hooks, and mods)
+- [Settings files and precedence](https://code.claude.com/docs/en/settings) (When edits take effect)
+- Anthropic's [`mods/sec-default`](https://github.com/anthropics/claude-code/tree/main/mods/sec-default), the built-in mod that prints the messages above
